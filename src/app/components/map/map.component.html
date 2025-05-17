@@ -1,0 +1,84 @@
+<!-- 地圖 -->
+<google-map
+    *ngIf="apiLoaded"
+    #mapRef
+    [center]="center"
+    [zoom]="zoom"
+    [options]="mapOptions"
+    (zoomChanged)="checkZoom()"
+    (mapClick)="mapHandleClick($event)"
+    (mapMousemove)="mapMouseMove($event)">
+    <!-- 點位 -->
+    <map-marker-clusterer
+        [imagePath]="markerClustererImagePath"
+        [zoomOnClick]="!gisService.mapEditType"
+        [maxZoom]="16">
+        <!-- 攝影機 -->
+        <ng-container *ngFor="let marker of cctvList; let i = index">
+            <map-marker
+                *ngIf="selectMarkTypes.includes(marker.CCTVType)"
+                #markerElem="mapMarker"
+                [position]="{
+                        lat: marker.Latitude,
+                        lng: marker.Longitude,
+                    }"
+                [draggable]="false"
+                [icon]="
+                    this.currentZoom > 16
+                        ? 'assets/img/map/marker/direction/cam_' +
+                          (marker.CCTVType || '0') +
+                          '_' +
+                          (marker.Direction || '0') +
+                          '.png'
+                        : 'assets/img/map/marker/dot_red.png'
+                "
+                [title]="marker.Name"
+                (mapClick)="toggleInfoWindow(marker, 'cctv')"></map-marker>
+        </ng-container>
+        <!-- 機箱 -->
+        <ng-container *ngIf="selectMarkTypes.includes(caseMarkerType)">
+            <map-marker
+                *ngFor="let marker of boxList"
+                #markerElem="mapMarker"
+                [position]="{
+                        lat: marker.Latitude,
+                        lng: marker.Longitude,
+                    }"
+                [icon]="
+                    this.currentZoom > 16
+                        ? 'assets/img/map/marker/case_red.png'
+                        : 'assets/img/map/marker/navigate_red.png'
+                "
+                [draggable]="false"
+                [title]="marker.Name"
+                (mapClick)="toggleInfoWindow(marker, 'chassis')"></map-marker>
+        </ng-container>
+    </map-marker-clusterer>
+    <!-- 地圖圈選 -->
+    <ng-container *ngFor="let circle of circles">
+        <map-circle
+            *ngIf="circle"
+            [center]="circle.center"
+            [radius]="circle.radius"
+            [options]="circle.options" />
+        <map-marker
+            *ngIf="circle"
+            [position]="{
+                    lat: circle.center.lat,
+                    lng: circle.center.lng,
+                }"
+            [label]="circle.label"></map-marker>
+    </ng-container>
+    <!-- 顯示當前繪製中的圓 -->
+    <map-circle
+        *ngIf="isDrawing"
+        [center]="tempCircle.center"
+        [radius]="tempCircle.radius"
+        [options]="tempCircle.options" />
+    <!-- 繪製多邊形匡選範圍 -->
+    <ng-container *ngFor="let polygon of polygonsList">
+        <map-polygon
+            *ngIf="polygon?.length"
+            [paths]="polygon"></map-polygon>
+    </ng-container>
+</google-map>
