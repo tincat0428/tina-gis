@@ -16,6 +16,9 @@ export const appConfig: ApplicationConfig = {
         providePrimeNG({
             theme: {
                 preset: Aura,
+                options: {
+                    darkModeSelector: '.none', // 將選擇器設為無效，防止自動切換
+                }
             },
         }),
     ],

@@ -1,84 +1,286 @@
-<!-- 地圖 -->
-<google-map
-    *ngIf="apiLoaded"
-    #mapRef
-    [center]="center"
-    [zoom]="zoom"
-    [options]="mapOptions"
-    (zoomChanged)="checkZoom()"
-    (mapClick)="mapHandleClick($event)"
-    (mapMousemove)="mapMouseMove($event)">
-    <!-- 點位 -->
-    <map-marker-clusterer
-        [imagePath]="markerClustererImagePath"
-        [zoomOnClick]="!gisService.mapEditType"
-        [maxZoom]="16">
-        <!-- 攝影機 -->
-        <ng-container *ngFor="let marker of cctvList; let i = index">
-            <map-marker
-                *ngIf="selectMarkTypes.includes(marker.CCTVType)"
-                #markerElem="mapMarker"
-                [position]="{
-                        lat: marker.Latitude,
-                        lng: marker.Longitude,
-                    }"
-                [draggable]="false"
-                [icon]="
-                    this.currentZoom > 16
-                        ? 'assets/img/map/marker/direction/cam_' +
-                          (marker.CCTVType || '0') +
-                          '_' +
-                          (marker.Direction || '0') +
-                          '.png'
-                        : 'assets/img/map/marker/dot_red.png'
-                "
-                [title]="marker.Name"
-                (mapClick)="toggleInfoWindow(marker, 'cctv')"></map-marker>
-        </ng-container>
+<p-toast></p-toast>
+
+<div id="map-content" class="map-panel" [ngClass]="{ active: sidebarVisible }" *ngIf="apiLoaded">
+    <!-- 查詢 sidebar 展開按鈕 -->
+    <button class="panel__toggle" (click)="sidebarToggle()">
+        <i class="pi" [ngClass]="sidebarVisible ? 'pi-angle-left' : 'pi-angle-right'"></i>
+    </button>
+
+    <!-- 查詢 sidebar -->
+    <app-map-panel class="map__panel" (cancelEmitter)="clearMapDraw()" (focusMarkerEmitter)="focusMarker($event)">
+    </app-map-panel>
+
+    <!-- 地圖 -->
+    <div class="map__container">
+        <google-map #mapRef [center]="center" [zoom]="zoom" [options]="mapOptions" (zoomChanged)="checkZoom()"
+            (mapClick)="mapHandleClick($event)" (mapMousemove)="mapMouseMove($event)"
+            (mapRightclick)="openMapContextMenu($event)">
+            <!-- 點位 -->
+            <map-marker-clusterer [imagePath]="markerClustererImagePath" [zoomOnClick]="!gisService.mapEditType"
+                [maxZoom]="16">
+                <!-- 攝影機 -->
+                <ng-container *ngFor="let marker of cctvList">
+                    <map-marker *ngIf="selectMarkTypes.includes(marker.CCTVType)" [position]="{
+                            lat: marker.Latitude,
+                            lng: marker.Longitude,
+                        }" [draggable]="false" [icon]="
+                            currentZoom > 16
+                                ? {
+                                      scaledSize: gisService.markerSize,
+                                      anchor: gisService.markerCenter,
+                                      url:
+                                          'assets/img/map/marker/direction' +
+                                          (marker.IsBroken ? '_broke' : '') +
+                                          '/cam_' +
+                                          (marker.CCTVType || '0') +
+                                          '_' +
+                                          (marker.Direction || '0') +
+                                          '.png',
+                                  }
+                                : 'assets/img/map/marker/dot_' +
+                                  (marker.IsBroken ? 'broke' : 'red') +
+                                  '.png'
+                        " [title]="marker.Name" (mapClick)="toggleInfoWindow(marker, 'cctv')"
+                        (mapRightclick)="openContextMenu($event, marker)" (mapMouseover)="findChassis(marker.ChassisId)"
+                        (mapMouseout)="removeAllHalos()"></map-marker>
+                </ng-container>
+                <!-- 機箱 -->
+                <ng-container *ngIf="selectMarkTypes.includes(caseMarkerType)">
+                    <map-marker *ngFor="let marker of boxList" [position]="{
+                            lat: marker.Latitude,
+                            lng: marker.Longitude,
+                        }" [icon]="
+                            currentZoom > 16
+                                ? {
+                                      scaledSize: gisService.markerSize,
+                                      anchor: gisService.markerCenter,
+                                      url:
+                                          'assets/img/map/marker/case_' +
+                                          (marker.Status === '0'
+                                              ? 'red'
+                                              : 'broke') +
+                                          '.png',
+                                  }
+                                : 'assets/img/map/marker/navigate_' +
+                                  (marker.Status === '0' ? 'red' : 'broke') +
+                                  '.png'
+                        " [draggable]="false" [title]="marker.Name" (mapClick)="toggleInfoWindow(marker, 'chassis')"
+                        (mapRightclick)="openMapContextMenu($event)" (mapMouseover)="findCams(marker.CamIds)"
+                        (mapMouseout)="removeAllHalos()"></map-marker>
+                </ng-container>
+            </map-marker-clusterer>
+
+            <!-- 地圖圈選 -->
+            <ng-container *ngFor="let circle of circles">
+                <map-circle *ngIf="circle" [center]="circle.center" [radius]="circle.radius"
+                    [options]="circle.options" />
+                <map-marker *ngIf="circle" [position]="{
+                        lat: circle.center.lat,
+                        lng: circle.center.lng,
+                    }" [label]="circle.label"></map-marker>
+            </ng-container>
+
+            <!-- 顯示當前繪製中的圓 -->
+            <map-circle *ngIf="isDrawing" [center]="tempCircle.center" [radius]="tempCircle.radius"
+                [options]="tempCircle.options" />
+
+            <!-- 繪製多邊形匡選範圍 -->
+            <ng-container *ngFor="let polygon of polygonsList">
+                <map-polygon *ngIf="polygon?.length" [paths]="polygon"></map-polygon>
+            </ng-container>
+
+            <!-- 個人標注 -->
+            <map-marker *ngFor="let marker of favoriteMarkerList" [position]="{
+                    lat: marker.Latitude,
+                    lng: marker.Longitude,
+                }" [icon]="{
+                    scaledSize: gisService.markerSize,
+                    anchor: gisService.markerCenter,
+                    url:
+                        'assets/img/map/marker/personal/' +
+                        marker.Icon +
+                        '.svg',
+                }" [draggable]="false" [label]="{
+                    text: marker.Name,
+                    className: 'icon-marker-label',
+                }"></map-marker>
+        </google-map>
+    </div>
+
+    <!-- 攝影機類別選單 -->
+    <div class="mark-selector-list">
+        <!-- <div *ngFor="let selector of cameraTypeList" class="mark-selector" [pTooltip]="selector.label"
+            tooltipPosition="left">
+            <p-checkbox [inputId]="'mark' + selector.value" name="selectMarkTypes" [value]="selector.value"
+                [(ngModel)]="selectMarkTypes" />
+            <label [for]="'mark' + selector.value" class="ml-2">
+                <img [src]="getSelectorIconUrl(selector.value)" [alt]="selector.label" />
+            </label>
+        </div> -->
         <!-- 機箱 -->
-        <ng-container *ngIf="selectMarkTypes.includes(caseMarkerType)">
-            <map-marker
-                *ngFor="let marker of boxList"
-                #markerElem="mapMarker"
-                [position]="{
-                        lat: marker.Latitude,
-                        lng: marker.Longitude,
-                    }"
-                [icon]="
-                    this.currentZoom > 16
-                        ? 'assets/img/map/marker/case_red.png'
-                        : 'assets/img/map/marker/navigate_red.png'
-                "
-                [draggable]="false"
-                [title]="marker.Name"
-                (mapClick)="toggleInfoWindow(marker, 'chassis')"></map-marker>
-        </ng-container>
-    </map-marker-clusterer>
-    <!-- 地圖圈選 -->
-    <ng-container *ngFor="let circle of circles">
-        <map-circle
-            *ngIf="circle"
-            [center]="circle.center"
-            [radius]="circle.radius"
-            [options]="circle.options" />
-        <map-marker
-            *ngIf="circle"
-            [position]="{
-                    lat: circle.center.lat,
-                    lng: circle.center.lng,
-                }"
-            [label]="circle.label"></map-marker>
-    </ng-container>
-    <!-- 顯示當前繪製中的圓 -->
-    <map-circle
-        *ngIf="isDrawing"
-        [center]="tempCircle.center"
-        [radius]="tempCircle.radius"
-        [options]="tempCircle.options" />
-    <!-- 繪製多邊形匡選範圍 -->
-    <ng-container *ngFor="let polygon of polygonsList">
-        <map-polygon
-            *ngIf="polygon?.length"
-            [paths]="polygon"></map-polygon>
-    </ng-container>
-</google-map>
+        <div class="mark-selector" pTooltip="機箱" tooltipPosition="left">
+            <p-checkbox inputId="mark-box" name="selectMarkTypes" [value]="caseMarkerType"
+                [(ngModel)]="selectMarkTypes" />
+            <label for="mark-box" class="ml-2">
+                <img src="assets/img/map/marker/selector/case.png" alt="機箱" />
+            </label>
+        </div>
+    </div>
+
+    <!-- 客製化功能列 -->
+    <div class="map-controller">
+        <!-- 地圖圖層選單 -->
+        <div *ngIf="gisService.region$ | async as Region">
+            <button class="map-btn shadow" (click)="overlayPanel.toggle($event)">
+                地圖圖層
+                <i class="pi pi-chevron-down ml-2"></i>
+            </button>
+            <p-popover #overlayPanel appendTo="body" [style]="{ width: '450px' }">
+                <p-accordion [value]="regionActiveSec">
+                    <p-accordionpanel *ngFor="
+                            let sec of regionSelector;
+                            let secIndex = index
+                        " [value]="secIndex">
+                        <p-accordionheader>
+                            {{ sec.header }}
+                        </p-accordionheader>
+                        <p-accordioncontent>
+                            <div class="flex flex-wrap">
+                                <div *ngFor="let item of Region[sec.dataKey]" class="w-1/4 flex mb-2 px-1">
+                                    <!-- <p-radiobutton name="area" [value]="item.value" [inputId]="item.value"
+                                        [label]="item.label" [(ngModel)]="selectedArea" (ngModelChange)="
+                                            regionActiveSec = secIndex
+                                        " /> -->
+                                </div>
+                            </div>
+                        </p-accordioncontent>
+                    </p-accordionpanel>
+                </p-accordion>
+                <div class="px-3 pb-2">
+                    <p-button styleClass="w-100" label="更新" [disabled]="!selectedArea?.length"
+                        (onClick)="drawRegionArea(selectedArea)"></p-button>
+                </div>
+            </p-popover>
+        </div>
+    </div>
+</div>
+
+<!-- 客製化 info-window -->
+<p-dialog *ngFor="let marker of selectedMarker; let i = index" [header]="(marker.CCTVId ? '攝影機' : '機箱') + '資訊'"
+    [(visible)]="marker.isOpen" [style]="
+        screenWidth <= 1000
+            ? { width: '300px' }
+            : {
+                  width: '350px',
+                  position: 'absolute',
+                  left: marker.x + 'px',
+                  top: marker.y + 'px',
+              }
+    " (onHide)="
+        toggleInfoWindow(marker, marker.CCTVId ? 'cctv' : 'chassis')
+    " (onDragEnd)="updateDialogPosition(marker, $event)">
+    <ng-container [ngTemplateOutlet]="marker.CCTVId ? cctvInfoTemp : boxInfoTemp"
+        [ngTemplateOutletContext]="{ rowData: marker }"></ng-container>
+</p-dialog>
+
+<!-- 攝影機 info-window -->
+<ng-template #cctvInfoTemp let-rowData="rowData">
+    <div (mouseover)="findCams([rowData.CCTVId])" (mouseout)="removeAllHalos()">
+        <app-map-video *ngIf="rowData?.CCTVId" [rowData]="rowData"></app-map-video>
+        <div *ngFor="let field of cctvInfoField" class="flex items-stretch border-b">
+            <div class="text-right w-1/3 border-r p-2">
+                {{ field.fieldName }}
+            </div>
+            <ng-container [ngSwitch]="field.key">
+                <div *ngSwitchCase="'Direction'" class="p-2 w-2/3">
+                    {{ rowData.Direction }}°
+                </div>
+                <div *ngSwitchCase="'Image'" class="p-2 w-2/3">
+                    <button *ngIf="rowData?.Image; else noData" pButton label="觀看場勘圖"
+                        class="p-button-primary p-button-small" (click)="openImgDialog(rowData.Image)"></button>
+                </div>
+                <div class="p-2 w-2/3" *ngSwitchDefault>
+                    <span *ngIf="rowData?.[field.key]; else noData">
+                        {{ rowData?.[field.key] }}
+                    </span>
+                </div>
+            </ng-container>
+        </div>
+    </div>
+</ng-template>
+
+<!-- 機箱 info-window -->
+<ng-template #boxInfoTemp let-rowData="rowData">
+    <div (mouseover)="findChassis(rowData.ChassisId)" (mouseout)="removeAllHalos()">
+        <div *ngFor="let field of camBoxInfoField" class="flex items-stretch border-b">
+            <div class="text-right w-1/3 border-r p-2">
+                {{ field.fieldName }}
+            </div>
+            <ng-container [ngSwitch]="field.key">
+                <div *ngSwitchCase="'Image'" class="p-2 w-2/3">
+                    <button *ngIf="rowData?.Image; else noData" pButton label="觀看場勘圖"
+                        class="p-button-primary p-button-small" (click)="openImgDialog(rowData.Image)"></button>
+                </div>
+                <div *ngSwitchCase="'CamIds'" class="p-2 w-2/3">
+                    <button *ngIf="rowData.CamIds?.length; else noData" pButton label="即時影像"
+                        class="p-button-primary p-button-small"></button>
+                </div>
+                <div class="p-2 w-2/3" *ngSwitchDefault>
+                    <span *ngIf="rowData?.[field.key]; else noData">
+                        {{ rowData?.[field.key] }}
+                    </span>
+                </div>
+            </ng-container>
+        </div>
+    </div>
+</ng-template>
+
+<!-- 圖片彈窗 -->
+<p-dialog header="場刊圖" [(visible)]="imgDialog.isOpen" [modal]="true" [style]="{ width: '80vw', maxWidth: '1200px' }">
+    <img class="w-full" [src]="imgDialog.imgUrl" alt="場刊圖" />
+</p-dialog>
+
+<!-- 無資料 -->
+<ng-template #noData>-</ng-template>
+
+<!-- 右鍵彈窗 -->
+<p-contextmenu #contextMenu [model]="contextMenuItems" [baseZIndex]="1000"></p-contextmenu>
+
+
+<!-- 攝影機位置彈窗 -->
+<p-dialog [(visible)]="camLocationDialog.isOpen" [modal]="true" [style]="{ width: '450px' }" header="編輯位置">
+    <form [formGroup]="camLocationDialog.form" id="location-form">
+        <div class="mb-3">
+            <label class="text-right min-w-[85px]" for="Direction">
+                方向(度)
+                <code>*</code>
+            </label>
+            <div>
+                <p-inputnumber inputId="Direction" formControlName="Direction" [min]="0" [max]="360"
+                    [maxFractionDigits]="5" suffix="°" placeholder="請輸入方向（0–360）" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="text-right min-w-[85px]" for="Latitude">
+                緯度
+                <code>*</code>
+            </label>
+            <div>
+                <p-inputnumber inputId="Latitude" formControlName="Latitude" placeholder="請輸入緯度" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="text-right min-w-[85px]" for="Longitude">
+                經度
+                <code>*</code>
+            </label>
+            <div>
+                <p-inputnumber inputId="Longitude" formControlName="Longitude" placeholder="請輸入經度" />
+            </div>
+        </div>
+    </form>
+    <ng-template pTemplate="footer">
+        <button pButton class="p-button-secondary mr-2" label="取消" (click)="camLocationDialog.isOpen = false"></button>
+        <button pButton label="確認" [disabled]="camLocationDialog.form.invalid" (click)="updateCamLocation()"></button>
+    </ng-template>
+</p-dialog>

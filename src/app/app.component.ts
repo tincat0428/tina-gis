@@ -5,6 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { GoogleMapsModule } from '@angular/google-maps';
 import { HttpClientModule, HttpClientJsonpModule } from '@angular/common/http';
 import { MapComponent } from './components/map/map.component';
+import { ToastModule } from 'primeng/toast';
 
 @Component({
     selector: 'app-root',
@@ -17,6 +18,7 @@ import { MapComponent } from './components/map/map.component';
         HttpClientJsonpModule,
         ButtonModule,
         MapComponent,
+        ToastModule,
     ],
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss',

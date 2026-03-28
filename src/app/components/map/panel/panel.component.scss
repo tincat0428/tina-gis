@@ -1,0 +1,12 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+}
+
+
+.result-list {
+    overflow-y: auto;
+    flex: 1;
+}

@@ -1,15 +1,239 @@
-google-map {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
 :host {
     display: block;
     width: 100%;
     height: 100vh;
-    .map-container {
-        width: 100% !important;
-        height: 100% !important;
+    position: relative;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  地圖主要佈局                                                                  */
+/* -------------------------------------------------------------------------- */
+#map-content {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.map-panel {
+    --panel-width: 400px;
+}
+
+/* Sidebar 展開按鈕 */
+.panel__toggle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 50px;
+    background: #fff;
+    border: solid 1px rgba(153, 153, 153, 0.3);
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    transition: left 0.3s;
+}
+
+/* Panel 本體 */
+.map__panel {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    transition:
+        width 0.3s,
+        min-width 0.3s;
+    background: #fff;
+    border-right: 1px solid #e0e0e0;
+    z-index: 5;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+/* 側邊欄打開狀態 */
+.map-panel.active {
+    .map__panel {
+        width: var(--panel-width);
+        min-width: var(--panel-width);
+        overflow-y: auto;
+    }
+
+    .panel__toggle {
+        left: var(--panel-width);
+    }
+}
+
+/* 地圖容器 */
+.map__container {
+    flex: 1;
+    position: relative;
+    height: 100%;
+
+    google-map {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  攝影機類別切換                                                               */
+/* -------------------------------------------------------------------------- */
+.mark-selector-list {
+    position: absolute;
+    top: 85px;
+    right: 5px;
+    z-index: 2;
+}
+
+.mark-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 52px;
+    margin-bottom: 20px;
+    background: #fff;
+    border: solid 2px #0b92b3;
+    border-radius: 50%;
+    cursor: pointer;
+    aspect-ratio: 1/1;
+
+    p-checkbox {
+        overflow: hidden;
+        position: absolute;
+        top: -8px;
+        left: -5px;
+        background: #fff;
+        border: solid #0b92b3 1px;
+        border-radius: 8px;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  地圖功能列                                                                  */
+/* -------------------------------------------------------------------------- */
+.map-controller {
+    display: flex;
+    position: absolute;
+    top: 10px;
+    right: 220px;
+    gap: 1.5rem;
+    z-index: 2;
+}
+
+.map-btn {
+    display: flex;
+    align-items: center;
+    padding: 0.45rem 1rem;
+    background: #fff;
+    border: solid 1px rgba(153, 153, 153, 0.5);
+    border-radius: 6px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    i {
+        vertical-align: middle;
+        font-size: 0.8rem;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Dialog 共用                                                                 */
+/* -------------------------------------------------------------------------- */
+:host ::ng-deep {
+    .p-dialog {
+        .p-dialog-header,
+        .p-dialog-content {
+            padding: 0.5rem;
+        }
+    }
+}
+
+.p-button-small {
+    padding: 0.4rem;
+    font-size: 0.8rem;
+    line-height: initial;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  個人標記                                                                    */
+/* -------------------------------------------------------------------------- */
+
+#personal-marker-list {
+    overflow: auto;
+    max-height: 250px;
+}
+
+.icon-radio {
+    input[type='radio'] {
+        display: none;
+
+        &:checked + label {
+            background: #4a5bf7;
+        }
+    }
+
+    label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        border: solid 1px #cbd5e1;
+        border-radius: 8px;
+        cursor: pointer;
+        aspect-ratio: 1/1;
+    }
+}
+
+::ng-deep {
+    .icon-marker-label {
+        font-size: 1rem !important;
+        transform: translateY(-20px);
+    }
+}
+
+.icon-img {
+    width: 16px;
+    min-width: 16px;
+    filter: brightness(0);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  攝影機位置 Dialog                                                           */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/*  RWD                                                                        */
+/* -------------------------------------------------------------------------- */
+@media (max-width: 576px) {
+    .mark-selector-list {
+        top: 200px;
+        right: 12px;
+    }
+
+    .mark-selector {
+        width: 36px;
+        margin-bottom: 8px;
+
+        p-checkbox {
+            overflow: hidden;
+            position: absolute;
+            top: -10px;
+            left: -10px;
+        }
+    }
+
+    .map-controller {
+        align-items: flex-end;
+        flex-direction: column;
+        top: 60px;
+        right: 12px;
+        gap: 8px;
     }
 }

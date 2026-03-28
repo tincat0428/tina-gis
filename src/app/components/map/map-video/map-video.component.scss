@@ -1,0 +1,41 @@
+.video-box {
+    position: relative;
+    min-height: 150px;
+    background: #000;
+
+    .btn-group {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 5;
+
+        button {
+            padding: 0.5rem;
+            background: #fff;
+            border-color: #4d4d4d;
+            color: #4d4d4d;
+            font-size: 0.8rem;
+            line-height: initial;
+
+            &:hover {
+                filter: brightness(0.9);
+            }
+        }
+    }
+}
+
+.loader-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholder-text {
+    color: #888;
+    font-size: 0.85rem;
+}

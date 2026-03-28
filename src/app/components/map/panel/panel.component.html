@@ -1,0 +1,61 @@
+<p-tabs [(value)]="activeIndex" (valueChange)="tabChange()">
+    <p-tablist>
+        <p-tab [value]="0">範圍圈選</p-tab>
+        <p-tab [value]="1">軌跡繪製</p-tab>
+    </p-tablist>
+</p-tabs>
+
+<form class="px-3" [ngSwitch]="activeIndex" [hidden]="showResult" [formGroup]="searchForm">
+    <!-- 交集查詢 -->
+    <ng-container *ngSwitchCase="0">
+        <ng-container *ngTemplateOutlet="switchMap"></ng-container>
+        <ng-container formArrayName="IncidentLocations">
+            <div *ngFor="
+                    let location of incidentLocation.controls;
+                    let i = index
+                " [formGroupName]="i" class="w-full flex px-2 mb-2">
+                <p-inputgroup>
+                    <p-inputgroup-addon [hidden]="hiddenRadiusIdx === i">半徑</p-inputgroup-addon>
+                    <p-inputnumber [min]="50" [hidden]="hiddenRadiusIdx === i" formControlName="Radius" />
+                    <p-inputgroup-addon><i class="pi pi-map-marker"></i></p-inputgroup-addon>
+                    <input type="text" pInputText placeholder="請輸入地址" formControlName="Address" />
+                    <p-button *ngIf="!location.get('Longitude')?.value" icon="pi pi-search" severity="info"
+                        (onClick)="addCircleFromAddr(i)" />
+                    <p-button *ngIf="location.get('Longitude')?.value" icon="pi pi-eraser" severity="danger"
+                        (onClick)="clearCircleData(i)" />
+                </p-inputgroup>
+            </div>
+        </ng-container>
+    </ng-container>
+    <!-- 軌跡繪製 -->
+    <ng-container *ngSwitchCase="1">
+        軌跡繪製
+    </ng-container>
+</form>
+
+<!-- 查詢結果 -->
+<div *ngIf="showResult" class="flex flex-col flex-grow">
+    <button class="w-full bg-gray-500 p-3 border-0 text-white" (click)="backToSearch()">
+        <i class="pi pi-arrow-left mr-2"></i>返回搜尋頁
+    </button>
+    <p-progressspinner *ngIf="searchLoading; else resultTemp" styleClass="w-100 h-3rem mt-5 mx-auto" strokeWidth="6"
+        animationDuration=".5s" />
+    <ng-template #resultTemp>
+        <div class="result-list">
+            <div *ngFor="let item of resultList" class="px-3 py-4 border-b flex items-start cursor-pointer"
+                [ngClass]="{ 'bg-yellow-300': item === selectedResult }" (click)="selectResult(item)"
+                (mouseover)="toggleHalo(item)" (mouseout)="toggleHalo()">
+                <i class="pi pi-info-circle text-blue-600 mr-2 mt-1"></i>
+                <span>{{ item.Name }}</span>
+            </div>
+        </div>
+    </ng-template>
+</div>
+
+<!-- 地圖模式啟用按鈕 -->
+<ng-template #switchMap>
+    <div class="flex items-center w-full mt-2 mb-3 px-4">
+        <label class="min-w-[80px] text-right">地圖模式操作</label>
+        <p-toggleswitch class="flex" (onChange)="mapEditToggle($event.checked)" />
+    </div>
+</ng-template>
