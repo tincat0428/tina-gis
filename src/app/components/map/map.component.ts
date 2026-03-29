@@ -32,6 +32,7 @@ import {
     BoxMarker,
     CctvMarker,
     DropDownListModel,
+    GisCircleType,
     PersonalMarker,
 } from '../../model/gis';
 
@@ -120,7 +121,7 @@ export class MapComponent implements OnInit, OnDestroy {
     //- 螢幕寬度
     screenWidth: number = window.innerWidth;
     //- 側邊欄
-    sidebarVisible = false;
+    sidebarVisible = true;
 
     //- 播放清單
     videoDialogTitleMap: Record<VideoDialogMode, string> = {
@@ -222,7 +223,9 @@ export class MapComponent implements OnInit, OnDestroy {
                     break;
                 case 'add-circle':
                     this.addCircle(res.data);
-                    this.center = res.data.center;
+                    const { center } = res.data
+                    this.center = center;
+                    this.focusMarker({ Latitude: center.lat, Longitude: center.lng })
                     break;
                 case 'delete-circle':
                     this.deleteCircle(res.data);
@@ -276,6 +279,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
     /** 地圖點擊處理 */
     mapHandleClick(event: google.maps.MapMouseEvent) {
+        console.log(this.gisService.mapEditType)
         if (this.gisService.mapEditType === 'circle') {
             this.addCircleFromClick(event);
         }
@@ -300,7 +304,7 @@ export class MapComponent implements OnInit, OnDestroy {
     }
 
     /** 選取 Marker（移動地圖中心） */
-    focusMarker(target: any) {
+    focusMarker(target: { Latitude: number; Longitude: number }) {
         this.center = { lat: target.Latitude, lng: target.Longitude };
         this.zoom = 18;
     }
@@ -393,6 +397,24 @@ export class MapComponent implements OnInit, OnDestroy {
         }
     }
 
+    /** 拖曳圓圈中心事件 */
+    onCenterDragged(event, index: number) {
+        const newCenter = event.latLng.toJSON();
+        this.circles[index].center = newCenter;
+        console.log('onCenterDragged', event)
+    }
+
+    /** 拖曳結束後反查地址並更新 panel */
+    setZoneForm(index: number) {
+        const { center, radius } = this.circles[index];
+        this.gisService.getAddress(center.lat, center.lng).then((address: string) => {
+            this.gisService.panelAction$.next({
+                type: 'update-circle',
+                data: { index, center, radius, address },
+            });
+        });
+    }
+
     /** 地圖縮放 */
     checkZoom() {
         if (this.map) {
@@ -439,7 +461,7 @@ export class MapComponent implements OnInit, OnDestroy {
     }
 
     /** 新增圓圈 */
-    addCircle(data: any) {
+    addCircle(data: GisCircleType) {
         const { index, center, radius } = data;
         this.circles[index] = {
             label: (index + 1).toString(),

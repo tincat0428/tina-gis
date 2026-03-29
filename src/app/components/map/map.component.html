@@ -71,13 +71,15 @@
             </map-marker-clusterer>
 
             <!-- 地圖圈選 -->
-            <ng-container *ngFor="let circle of circles">
+            <ng-container *ngFor="let circle of circles; let i = index">
                 <map-circle *ngIf="circle" [center]="circle.center" [radius]="circle.radius"
                     [options]="circle.options" />
                 <map-marker *ngIf="circle" [position]="{
                         lat: circle.center.lat,
                         lng: circle.center.lng,
-                    }" [label]="circle.label"></map-marker>
+                    }" [label]="circle.label" [draggable]="true" (mapDrag)="onCenterDragged($event, i)"
+                    (mapDragend)="setZoneForm(i)">
+                </map-marker>
             </ng-container>
 
             <!-- 顯示當前繪製中的圓 -->

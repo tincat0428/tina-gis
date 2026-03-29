@@ -21,6 +21,7 @@ import { GisService } from '../../../services/gis.service';
 import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { ToastModule } from 'primeng/toast';
+import { MapEditType } from '../../../model/gis';
 
 @Component({
     selector: 'app-map-panel',
@@ -47,13 +48,14 @@ export class MapPanelComponent implements OnInit {
     @Output() cancelEmitter = new EventEmitter<void>();
     @Output() focusMarkerEmitter = new EventEmitter<any>();
 
-    activeIndex = 0;
     resultList: any[] = [];
     showResult = false;
     searchLoading = false;
-
-    stationList: any[] = [];
-    villageList: any[] = [];
+    modeList: { label: string; value: MapEditType }[] = [
+        { label: '範圍圈選', value: 'circle' },
+        { label: '軌跡繪製', value: 'route' }
+    ]
+    // mode = this.modeList[0].value;
 
     matchModeOptions = [
         { label: '聯集', value: 0 },
@@ -66,6 +68,7 @@ export class MapPanelComponent implements OnInit {
 
     hiddenRadiusIdx: number = null;
     selectedResult: any;
+    private searchingIndexes = new Set<number>();
 
     get incidentLocation(): FormArray {
         return this.searchForm.get('IncidentLocations') as FormArray;
@@ -83,11 +86,14 @@ export class MapPanelComponent implements OnInit {
     }
 
     ngOnInit(): void {
+        this.gisService.mapEditType = 'circle'
         this.initForm();
         this.gisService.panelAction$.subscribe(res => {
             if (!res) return;
             if (res.type === 'add-circle') {
                 this.addCircleData(res.data);
+            } else if (res.type === 'update-circle') {
+                this.updateCircleData(res.data);
             }
         });
     }
@@ -95,10 +101,6 @@ export class MapPanelComponent implements OnInit {
     selectResult(data: any) {
         this.focusMarkerEmitter.emit(data);
         this.selectedResult = data;
-    }
-
-    mapEditToggle(checked: boolean) {
-        this.gisService.mapEditType = checked ? 'circle' : null;
     }
 
     backToSearch() {
@@ -109,25 +111,22 @@ export class MapPanelComponent implements OnInit {
 
     tabChange() {
         this.clearMap();
-        this.stationList = [];
-        this.villageList = [];
+        // this.gisService.mapEditType = this.mode;
+        // console.log(this.gisService.mapEditType)
+        this.searchForm.enable();
         this.searchForm.patchValue({
-            BureauId: 'all',
-            StationId: 'all',
-            DistrictId: 'all',
-            VillageId: 'all',
             CameraName: '',
-            MatchMode: 0,
             IncidentLocations: this.incidentLocation.value.map(() => ({
                 Radius: 100,
                 Address: null,
+                Longitude: null,
+                Latitude: null,
             })),
         });
         if (this.showResult) this.backToSearch();
     }
 
     clearMap() {
-        this.gisService.mapEditType = null;
         this.cancelEmitter.emit();
     }
 
@@ -145,6 +144,18 @@ export class MapPanelComponent implements OnInit {
                 }),
             );
         }
+    }
+
+    updateCircleData(rowData: any) {
+        const targetForm = this.incidentLocation.at(rowData.index);
+        targetForm.enable();
+        targetForm.patchValue({
+            Radius: rowData.radius,
+            Address: rowData.address,
+            Longitude: rowData.center.lng,
+            Latitude: rowData.center.lat,
+        });
+        targetForm.disable();
     }
 
     addCircleData(rowData: any) {
@@ -171,6 +182,8 @@ export class MapPanelComponent implements OnInit {
     }
 
     addCircleFromAddr(index: number) {
+        if (this.searchingIndexes.has(index)) return;
+
         const targetForm = this.incidentLocation.controls[index];
         const { Address, Radius } = targetForm.value;
 
@@ -183,6 +196,7 @@ export class MapPanelComponent implements OnInit {
             return;
         }
 
+        this.searchingIndexes.add(index);
         this.clearCircleData(index);
 
         of(null)
@@ -194,12 +208,15 @@ export class MapPanelComponent implements OnInit {
                     targetForm.patchValue({
                         Longitude: res.lng,
                         Latitude: res.lat,
+                        Address
                     });
                     this.gisService.mapAction$.next({
                         type: 'add-circle',
                         data: { index, center: res, radius: Radius },
                     });
+                    targetForm.disable();
                 }),
+                finalize(() => this.searchingIndexes.delete(index)),
             )
             .subscribe();
     }

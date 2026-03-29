@@ -1,8 +1,12 @@
+/* 地圖模式 */
+export type MapEditType = 'circle' | 'route'
+
 /**
  * 地圖編輯行動
  */
 export type MapActionType =
     | 'add-circle'
+    | 'update-circle'
     | 'delete-circle'
     | 'clear'
     | 'show-halo'
@@ -53,4 +57,11 @@ export interface PersonalMarker {
 export interface DropDownListModel {
     label: string;
     value: string;
+}
+
+
+export interface GisCircleType {
+    index: number;
+    center: google.maps.LatLngLiteral;
+    radius: number
 }

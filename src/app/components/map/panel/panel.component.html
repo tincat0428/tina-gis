@@ -1,14 +1,12 @@
-<p-tabs [(value)]="activeIndex" (valueChange)="tabChange()">
+<p-tabs [(value)]="gisService.mapEditType" (valueChange)="tabChange()">
     <p-tablist>
-        <p-tab [value]="0">範圍圈選</p-tab>
-        <p-tab [value]="1">軌跡繪製</p-tab>
+        <p-tab *ngFor="let tab of modeList" [value]="tab.value">{{tab.label}}</p-tab>
     </p-tablist>
 </p-tabs>
 
-<form class="px-3" [ngSwitch]="activeIndex" [hidden]="showResult" [formGroup]="searchForm">
+<form class="p-3" [ngSwitch]="gisService.mapEditType" [hidden]="showResult" [formGroup]="searchForm">
     <!-- 交集查詢 -->
-    <ng-container *ngSwitchCase="0">
-        <ng-container *ngTemplateOutlet="switchMap"></ng-container>
+    <ng-container *ngSwitchCase="'circle'">
         <ng-container formArrayName="IncidentLocations">
             <div *ngFor="
                     let location of incidentLocation.controls;
@@ -18,7 +16,8 @@
                     <p-inputgroup-addon [hidden]="hiddenRadiusIdx === i">半徑</p-inputgroup-addon>
                     <p-inputnumber [min]="50" [hidden]="hiddenRadiusIdx === i" formControlName="Radius" />
                     <p-inputgroup-addon><i class="pi pi-map-marker"></i></p-inputgroup-addon>
-                    <input type="text" pInputText placeholder="請輸入地址" formControlName="Address" />
+                    <input type="text" pInputText placeholder="請輸入地址" formControlName="Address"
+                        (keydown.enter)="addCircleFromAddr(i)" />
                     <p-button *ngIf="!location.get('Longitude')?.value" icon="pi pi-search" severity="info"
                         (onClick)="addCircleFromAddr(i)" />
                     <p-button *ngIf="location.get('Longitude')?.value" icon="pi pi-eraser" severity="danger"
@@ -28,7 +27,7 @@
         </ng-container>
     </ng-container>
     <!-- 軌跡繪製 -->
-    <ng-container *ngSwitchCase="1">
+    <ng-container *ngSwitchCase="'route'">
         軌跡繪製
     </ng-container>
 </form>
@@ -51,11 +50,3 @@
         </div>
     </ng-template>
 </div>
-
-<!-- 地圖模式啟用按鈕 -->
-<ng-template #switchMap>
-    <div class="flex items-center w-full mt-2 mb-3 px-4">
-        <label class="min-w-[80px] text-right">地圖模式操作</label>
-        <p-toggleswitch class="flex" (onChange)="mapEditToggle($event.checked)" />
-    </div>
-</ng-template>

@@ -9,7 +9,7 @@ import {
     shareReplay,
     tap,
 } from 'rxjs';
-import { DropDownListModel, MapActionType } from '../model/gis';
+import { DropDownListModel, MapActionType, MapEditType } from '../model/gis';
 
 const GOOGLE = 'AIzaSyBj1eqR5T03-v52epF1leMMXeoTkwNXadw';
 
@@ -39,7 +39,7 @@ export class GisService {
     };
 
     //- 地圖編輯模式
-    mapEditType: 'circle' | null = null;
+    mapEditType: MapEditType = null;
 
     //- 對 panel 執行動作
     panelAction$ = new BehaviorSubject<{ type: MapActionType; data?}>(null);
