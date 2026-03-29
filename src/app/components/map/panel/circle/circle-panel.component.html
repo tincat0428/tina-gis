@@ -1,0 +1,41 @@
+<p-toast></p-toast>
+
+<form class="p-3" [formGroup]="searchForm" [hidden]="showResult">
+    <ng-container formArrayName="IncidentLocations">
+        <div *ngFor="let location of incidentLocation.controls; let i = index"
+            [formGroupName]="i" class="w-full flex px-2 mb-2">
+            <p-inputgroup>
+                <p-inputgroup-addon [hidden]="hiddenRadiusIdx === i">半徑</p-inputgroup-addon>
+                <p-inputnumber [min]="50" [hidden]="hiddenRadiusIdx === i" formControlName="Radius" />
+                <p-inputgroup-addon><i class="pi pi-map-marker"></i></p-inputgroup-addon>
+                <input type="text" pInputText placeholder="請輸入地址" formControlName="Address"
+                    (keydown.enter)="addCircleFromAddr(i)" />
+                <p-button *ngIf="!location.get('Longitude')?.value" icon="pi pi-search" severity="info"
+                    (onClick)="addCircleFromAddr(i)" />
+                <p-button *ngIf="location.get('Longitude')?.value" icon="pi pi-eraser" severity="danger"
+                    (onClick)="clearCircleData(i)" />
+            </p-inputgroup>
+        </div>
+    </ng-container>
+</form>
+
+<!-- 查詢結果 -->
+<div *ngIf="showResult" class="flex flex-col flex-grow">
+    <button class="w-full bg-gray-500 p-3 border-0 text-white" (click)="backToSearch()">
+        <i class="pi pi-arrow-left mr-2"></i>返回搜尋頁
+    </button>
+    <p-progressspinner *ngIf="searchLoading; else resultTemp" styleClass="w-100 h-3rem mt-5 mx-auto"
+        strokeWidth="6" animationDuration=".5s" />
+    <ng-template #resultTemp>
+        <div class="result-list">
+            <div *ngFor="let item of resultList" class="px-3 py-4 border-b flex items-start cursor-pointer"
+                [ngClass]="{ 'bg-yellow-300': item === selectedResult }"
+                (click)="selectResult(item)"
+                (mouseover)="toggleHalo(item)"
+                (mouseout)="toggleHalo()">
+                <i class="pi pi-info-circle text-blue-600 mr-2 mt-1"></i>
+                <span>{{ item.Name }}</span>
+            </div>
+        </div>
+    </ng-template>
+</div>
