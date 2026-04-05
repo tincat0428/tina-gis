@@ -1,1 +1,25 @@
-<div class="p-3 text-gray-500">軌跡繪製（功能開發中）</div>
+<p-toast></p-toast>
+
+<form class="p-3" [formGroup]="searchForm">
+    <ng-container formArrayName="Waypoints">
+        <div cdkDropList (cdkDropListDropped)="drop($event)">
+            <div *ngFor="let waypoint of waypoints.controls; let i = index" [formGroupName]="i"
+                class="w-full flex px-2 mb-2 items-center gap-2" cdkDrag>
+                <div cdkDragHandle class="flex items-center cursor-move">
+                    <i class="pi pi-bars text-400"></i>
+                </div>
+                <div class="flex-1">
+                    <p-inputgroup>
+                        <p-inputgroup-addon><i class="pi pi-map-marker"></i></p-inputgroup-addon>
+                        <input type="text" pInputText placeholder="請輸入地址" formControlName="Address"
+                            (keydown.enter)="addWaypointFromAddr(i)" />
+                        <p-button *ngIf="!waypoint.get('Longitude')?.value" icon="pi pi-search" severity="info"
+                            (onClick)="addWaypointFromAddr(i)" />
+                        <p-button *ngIf="waypoint.get('Longitude')?.value" icon="pi pi-eraser" severity="danger"
+                            (onClick)="clearWaypointData(i)" />
+                    </p-inputgroup>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+</form>

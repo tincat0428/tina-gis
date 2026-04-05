@@ -91,6 +91,18 @@
                 <map-polygon *ngIf="polygon?.length" [paths]="polygon"></map-polygon>
             </ng-container>
 
+            <!-- 軌跡路徑 -->
+            <map-directions-renderer *ngIf="directionsResult" [directions]="directionsResult"
+                [options]="{ suppressMarkers: true, polylineOptions: { strokeColor: '#FF0000', strokeOpacity: 0.8 } }">
+            </map-directions-renderer>
+
+            <!-- 路徑點位標記 -->
+            <ng-container *ngFor="let wp of routeWaypoints; let i = index">
+                <map-marker *ngIf="wp" [position]="wp"
+                    [label]="{ text: (i + 1).toString(), color: '#fff', fontWeight: 'bold' }">
+                </map-marker>
+            </ng-container>
+
             <!-- 個人標注 -->
             <map-marker *ngFor="let marker of favoriteMarkerList" [position]="{
                     lat: marker.Latitude,
@@ -120,13 +132,13 @@
             </label>
         </div> -->
         <!-- 機箱 -->
-        <div class="mark-selector" pTooltip="機箱" tooltipPosition="left">
+        <!-- <div class="mark-selector" pTooltip="機箱" tooltipPosition="left">
             <p-checkbox inputId="mark-box" name="selectMarkTypes" [value]="caseMarkerType"
                 [(ngModel)]="selectMarkTypes" />
             <label for="mark-box" class="ml-2">
                 <img src="assets/img/map/marker/selector/case.png" alt="機箱" />
             </label>
-        </div>
+        </div> -->
     </div>
 
     <!-- 客製化功能列 -->

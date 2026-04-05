@@ -98,6 +98,12 @@ export class MapComponent implements OnInit, OnDestroy {
         address?: string;
     }[] = [];
 
+    //- 軌跡繪製點位
+    routeWaypoints: (google.maps.LatLngLiteral | null)[] = new Array(8).fill(null);
+    //- 軌跡繪製結果
+    directionsResult: google.maps.DirectionsResult | null = null;
+    private directionsService: google.maps.DirectionsService;
+
     //- 檢視明細的 marker
     selectedMarker: any[] = [];
     //- 地圖圖層選項
@@ -230,6 +236,24 @@ export class MapComponent implements OnInit, OnDestroy {
                 case 'delete-circle':
                     this.deleteCircle(res.data);
                     break;
+                case 'add-waypoint':
+                    this.routeWaypoints[res.data.index] = res.data.position;
+                    this.renderRoute();
+                    break;
+                case 'delete-waypoint':
+                    this.routeWaypoints[res.data] = null;
+                    this.renderRoute();
+                    break;
+                case 'reorder-waypoints':
+                    this.routeWaypoints = (res.data as any[]).map(w =>
+                        w.lng != null ? { lat: w.lat, lng: w.lng } : null
+                    );
+                    this.renderRoute();
+                    break;
+                case 'clear-route':
+                    this.routeWaypoints = new Array(8).fill(null);
+                    this.directionsResult = null;
+                    break;
                 case 'clear':
                     this.clearMapDraw();
                     break;
@@ -282,6 +306,8 @@ export class MapComponent implements OnInit, OnDestroy {
         console.log(this.gisService.mapEditType)
         if (this.gisService.mapEditType === 'circle') {
             this.addCircleFromClick(event);
+        } else if (this.gisService.mapEditType === 'route') {
+            this.addWaypointFromClick(event);
         }
     }
 
@@ -309,9 +335,58 @@ export class MapComponent implements OnInit, OnDestroy {
         this.zoom = 18;
     }
 
+    /** 地圖點擊新增路徑點 */
+    addWaypointFromClick(event: google.maps.MapMouseEvent) {
+        const pos = event.latLng?.toJSON();
+        if (!pos) return;
+        const firstNull = this.routeWaypoints.findIndex(w => w === null);
+        if (firstNull < 0) return;
+        this.gisService.getAddress(pos.lat, pos.lng).then(address => {
+            this.routeWaypoints[firstNull] = pos;
+            this.gisService.panelAction$.next({
+                type: 'add-waypoint',
+                data: { index: firstNull, position: pos, address },
+            });
+            this.renderRoute();
+        });
+    }
+
+    /** 計算並渲染路線 */
+    renderRoute() {
+        const filled = this.routeWaypoints
+            .map((w, i) => ({ w, i }))
+            .filter(x => x.w !== null);
+
+        if (filled.length < 2) {
+            this.directionsResult = null;
+            return;
+        }
+
+        if (!this.directionsService) {
+            this.directionsService = new google.maps.DirectionsService();
+        }
+
+        const origin = filled[0].w;
+        const destination = filled[filled.length - 1].w;
+        const waypoints = filled.slice(1, -1).map(x => ({
+            location: x.w as google.maps.LatLngLiteral,
+            stopover: true,
+        }));
+
+        this.directionsService.route(
+            { origin, destination, waypoints, travelMode: google.maps.TravelMode.DRIVING },
+            (result, status) => {
+                this.directionsResult =
+                    status === google.maps.DirectionsStatus.OK ? result : null;
+            },
+        );
+    }
+
     /** 清除畫面 */
     clearMapDraw() {
         this.circles = [];
+        this.routeWaypoints = new Array(8).fill(null);
+        this.directionsResult = null;
     }
 
     sidebarToggle() {

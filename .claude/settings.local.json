@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git -C /Users/tinabook/repos/tina-gis log --oneline --max-count=15)",
       "Bash(npm install:*)",
-      "Bash(npx tailwindcss:*)"
+      "Bash(npx tailwindcss:*)",
+      "Bash(npm list:*)"
     ]
   }
 }
