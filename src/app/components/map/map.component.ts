@@ -1,5 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import {
+    Component,
+    HostListener,
+    OnDestroy,
+    OnInit,
+    ViewChild,
+} from '@angular/core';
 import {
     FormBuilder,
     FormGroup,
@@ -7,12 +13,11 @@ import {
     ReactiveFormsModule,
     Validators,
 } from '@angular/forms';
-import { GoogleMap, GoogleMapsModule } from '@angular/google-maps';
+import { GoogleMap, GoogleMapsModule, MapCircle } from '@angular/google-maps';
 import { MenuItem, MessageService } from 'primeng/api';
 import { forkJoin, of } from 'rxjs';
 import { finalize, tap } from 'rxjs/operators';
 /*-- PrimeNG --*/
-import { AccordionModule } from 'primeng/accordion';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ContextMenu, ContextMenuModule } from 'primeng/contextmenu';
@@ -20,7 +25,6 @@ import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { Popover, PopoverModule } from 'primeng/popover';
-import { RadioButtonModule } from 'primeng/radiobutton';
 import { ToastModule } from 'primeng/toast';
 /*-- Sub-components --*/
 import { MapPanelComponent } from './panel/panel.component';
@@ -47,7 +51,6 @@ type VideoDialogMode = 'realtime' | 'history';
         FormsModule,
         ReactiveFormsModule,
         GoogleMapsModule,
-        AccordionModule,
         ButtonModule,
         CheckboxModule,
         ContextMenuModule,
@@ -55,7 +58,6 @@ type VideoDialogMode = 'realtime' | 'history';
         InputNumberModule,
         InputTextModule,
         PopoverModule,
-        RadioButtonModule,
         ToastModule,
         MapPanelComponent,
         MapVideoComponent,
@@ -89,6 +91,8 @@ export class MapComponent implements OnInit, OnDestroy {
     isDrawing = false;
     //- 繪製中的圓形
     tempCircle = { center: { lat: 0, lng: 0 }, radius: 0, options: {} };
+    //- 繪製中的半徑是否已被上限截斷
+    radiusCapped = false;
     //- 地圖圈選
     circles: {
         center: google.maps.LatLngLiteral;
@@ -106,16 +110,8 @@ export class MapComponent implements OnInit, OnDestroy {
 
     //- 檢視明細的 marker
     selectedMarker: any[] = [];
-    //- 地圖圖層選項
-    regionActiveSec = 1;
-    regionSelector = [
-        { header: '行政區域', dataKey: 'district' },
-        { header: '分局轄境', dataKey: 'bureau' },
-    ];
     //- 範圍繪製點位
     polygonsList: google.maps.LatLngLiteral[][] = [];
-    //- 所選繪製區域
-    selectedArea: any;
 
     //- 圖片彈窗
     imgDialog = { isOpen: false, imgUrl: null as string | null };
@@ -176,6 +172,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
     @ViewChild('mapRef') map!: GoogleMap;
     @ViewChild('contextMenu') contextMenu!: ContextMenu;
+    @ViewChild(MapPanelComponent) mapPanel!: MapPanelComponent;
 
     constructor(
         private formBuilder: FormBuilder,
@@ -229,12 +226,19 @@ export class MapComponent implements OnInit, OnDestroy {
                     break;
                 case 'add-circle':
                     this.addCircle(res.data);
-                    const { center } = res.data
-                    this.center = center;
-                    this.focusMarker({ Latitude: center.lat, Longitude: center.lng })
+                    this.focusCircle(res.data.center, res.data.radius);
+                    break;
+                case 'update-circle-radius':
+                    this.updateCircleRadius(res.data.index, res.data.radius);
                     break;
                 case 'delete-circle':
                     this.deleteCircle(res.data);
+                    break;
+                case 'clear-circles':
+                    this.circles = [];
+                    break;
+                case 'highlight-circle':
+                    this.highlightCircle(res.data);
                     break;
                 case 'add-waypoint':
                     this.routeWaypoints[res.data.index] = res.data.position;
@@ -256,6 +260,9 @@ export class MapComponent implements OnInit, OnDestroy {
                     break;
                 case 'clear':
                     this.clearMapDraw();
+                    break;
+                case 'draw-region':
+                    this.drawRegionArea(res.data);
                     break;
             }
         });
@@ -318,15 +325,19 @@ export class MapComponent implements OnInit, OnDestroy {
         }
     }
 
-    /** 移動至目標視野 */
-    setBoundary(data: number[]) {
-        if (this.map) {
-            const bounds = new google.maps.LatLngBounds(
-                new google.maps.LatLng(data[0], data[2]),
-                new google.maps.LatLng(data[1], data[3]),
-            );
-            this.map.fitBounds(bounds);
-        }
+    /** 移動至目標視野（涵蓋傳入的所有 boundingbox） */
+    setBoundary(boundingboxes: number[][]) {
+        if (!this.map || !boundingboxes?.length) return;
+
+        const bounds = new google.maps.LatLngBounds();
+        boundingboxes.forEach(box => {
+            if (!box || box.length < 4) return;
+            // boundingbox 格式：[south, north, west, east]
+            bounds.extend(new google.maps.LatLng(box[0], box[2]));
+            bounds.extend(new google.maps.LatLng(box[1], box[3]));
+        });
+
+        if (!bounds.isEmpty()) this.map.fitBounds(bounds, 40);
     }
 
     /** 選取 Marker（移動地圖中心） */
@@ -387,11 +398,14 @@ export class MapComponent implements OnInit, OnDestroy {
         this.circles = [];
         this.routeWaypoints = new Array(8).fill(null);
         this.directionsResult = null;
+        this.polygonsList = [];
     }
 
     sidebarToggle() {
         this.sidebarVisible = !this.sidebarVisible;
-        if (!this.sidebarVisible) {
+        if (this.sidebarVisible) {
+            this.mapPanel?.resetToFirstTab();
+        } else {
             this.gisService.mapEditType = null;
             this.clearMapDraw();
         }
@@ -464,29 +478,86 @@ export class MapComponent implements OnInit, OnDestroy {
                 event.latLng.lat(),
                 event.latLng.lng(),
             );
-            this.tempCircle.radius =
+            const distance =
                 google.maps.geometry.spherical.computeDistanceBetween(
                     center,
                     movingPoint,
                 );
+
+            //- 超過上限時圓不再變大，並於提示列標示已達上限
+            this.radiusCapped = distance > this.gisService.circleMaxRadius;
+            this.tempCircle.radius = Math.min(
+                distance,
+                this.gisService.circleMaxRadius,
+            );
         }
+    }
+
+    /** 取消繪製中的圓 */
+    @HostListener('document:keydown.escape')
+    cancelDrawing() {
+        if (!this.isDrawing) return;
+        this.isDrawing = false;
+        this.radiusCapped = false;
+        this.tempCircle = { center: { lat: 0, lng: 0 }, radius: 0, options: {} };
     }
 
     /** 拖曳圓圈中心事件 */
     onCenterDragged(event, index: number) {
         const newCenter = event.latLng.toJSON();
         this.circles[index].center = newCenter;
-        console.log('onCenterDragged', event)
     }
 
     /** 拖曳結束後反查地址並更新 panel */
     setZoneForm(index: number) {
         const { center, radius } = this.circles[index];
         this.gisService.getAddress(center.lat, center.lng).then((address: string) => {
+            if (!this.circles[index]) return;
+            this.circles[index].address = address;
             this.gisService.panelAction$.next({
                 type: 'update-circle',
                 data: { index, center, radius, address },
             });
+        });
+    }
+
+    /** 於地圖上直接拖曳調整半徑 → 卡控上下限後同步至 panel */
+    onCircleRadiusChanged(index: number, circleRef: MapCircle) {
+        const circle = this.circles[index];
+        const radius = circleRef?.getRadius();
+        if (!circle || radius == null) return;
+
+        const newRadius = this.gisService.clampRadius(radius);
+        //- 超出範圍時把 Google 的圓拉回上下限（值相同不會觸發 input 更新）
+        if (Math.round(radius) !== newRadius) {
+            circleRef.circle?.setRadius(newRadius);
+        }
+        if (newRadius === Math.round(circle.radius)) return;
+
+        circle.radius = newRadius;
+        this.gisService.panelAction$.next({
+            type: 'update-circle',
+            data: {
+                index,
+                center: circle.center,
+                radius: newRadius,
+                address: circle.address,
+            },
+        });
+    }
+
+    /** panel 調整半徑 → 同步至地圖 */
+    updateCircleRadius(index: number, radius: number) {
+        const circle = this.circles[index];
+        if (!circle || !radius) return;
+        circle.radius = this.gisService.clampRadius(radius);
+    }
+
+    /** 強調指定的圓（panel hover 時使用） */
+    highlightCircle(index: number | null) {
+        this.circles.forEach((circle, i) => {
+            if (!circle) return;
+            circle.options = this.circleOptions(i === index);
         });
     }
 
@@ -500,36 +571,71 @@ export class MapComponent implements OnInit, OnDestroy {
     /** 地圖點擊圈選 */
     addCircleFromClick(event: google.maps.MapMouseEvent) {
         if (!this.isDrawing) {
-            if (event.latLng) {
-                this.tempCircle.center = {
-                    lat: event.latLng.lat(),
-                    lng: event.latLng.lng(),
-                };
-                this.tempCircle.radius = 0;
-                this.tempCircle.options = {
-                    fillColor: 'rgba(0, 0, 0, 0.3)',
-                    strokeColor: '#555',
-                    strokeWeight: 2,
-                    clickable: false,
-                };
-                this.isDrawing = true;
+            if (!event.latLng) return;
+
+            const firstNullIndex = this.circles.findIndex(item => item === null);
+            const nextIndex =
+                firstNullIndex >= 0 ? firstNullIndex : this.circles.length;
+            if (nextIndex >= this.gisService.circleMaxCount) {
+                this.messageService.add({
+                    severity: 'warn',
+                    summary: `最多只能圈選 ${this.gisService.circleMaxCount} 個範圍`,
+                    life: 3000,
+                });
+                return;
             }
+
+            this.tempCircle.center = {
+                lat: event.latLng.lat(),
+                lng: event.latLng.lng(),
+            };
+            this.tempCircle.radius = 0;
+            this.tempCircle.options = {
+                fillColor: 'rgba(0, 0, 0, 0.3)',
+                strokeColor: '#555',
+                strokeWeight: 2,
+                clickable: false,
+            };
+            this.isDrawing = true;
         } else {
             const firstNullIndex = this.circles.findIndex(item => item === null);
             const targetIndex =
                 firstNullIndex >= 0 ? firstNullIndex : this.circles.length;
 
             this.isDrawing = false;
-            const newCircleData = { ...this.tempCircle, index: targetIndex };
+            this.radiusCapped = false;
+            //- 只點擊未拖曳時，直接採用面板設定的預設半徑
+            //- （半徑下限 500 m，門檻放寬避免手抖一下就跳到最小值）
+            const radius = this.gisService.clampRadius(
+                this.tempCircle.radius < 100
+                    ? this.gisService.circleDefaultRadius
+                    : this.tempCircle.radius,
+            );
+            const newCircleData = {
+                center: { ...this.tempCircle.center },
+                radius,
+                index: targetIndex,
+            };
             this.addCircle(newCircleData);
+            //- 先讓面板出現卡片，地址反查完成後再補上
+            this.gisService.panelAction$.next({
+                type: 'add-circle',
+                data: newCircleData,
+            });
 
-            const finalCenter = this.tempCircle.center;
+            const finalCenter = newCircleData.center;
             this.gisService
                 .getAddress(finalCenter.lat, finalCenter.lng)
                 .then((address: string) => {
+                    if (!this.circles[targetIndex]) return;
+                    this.circles[targetIndex].address = address;
                     this.gisService.panelAction$.next({
-                        type: 'add-circle',
-                        data: { ...newCircleData, address },
+                        type: 'update-circle',
+                        data: {
+                            ...newCircleData,
+                            radius: this.circles[targetIndex].radius,
+                            address,
+                        },
                     });
                 });
         }
@@ -537,19 +643,48 @@ export class MapComponent implements OnInit, OnDestroy {
 
     /** 新增圓圈 */
     addCircle(data: GisCircleType) {
-        const { index, center, radius } = data;
+        const { index, center, radius, address } = data;
         this.circles[index] = {
             label: (index + 1).toString(),
             center,
             radius,
-            options: {
-                fillColor: 'rgba(255, 0, 0, 0.3)',
-                strokeColor: '#FF0000',
-                strokeWeight: 2,
-                clickable: false,
-                zIndex: 9999,
-            },
+            address,
+            options: this.circleOptions(false),
         };
+    }
+
+    /** 圈選樣式（highlight 為 panel hover 時的強調狀態） */
+    private circleOptions(highlight: boolean): google.maps.CircleOptions {
+        return {
+            fillColor: highlight
+                ? 'rgba(255, 0, 0, 0.45)'
+                : 'rgba(255, 0, 0, 0.3)',
+            strokeColor: '#FF0000',
+            strokeWeight: highlight ? 4 : 2,
+            clickable: false,
+            editable: true,
+            draggable: false,
+            zIndex: 9999,
+        };
+    }
+
+    /** 將視野調整至剛建立的圈選範圍 */
+    private focusCircle(center: google.maps.LatLngLiteral, radius: number) {
+        this.center = center;
+        if (!this.map) return;
+
+        const origin = new google.maps.LatLng(center.lat, center.lng);
+        const bounds = new google.maps.LatLngBounds();
+        [0, 90, 180, 270].forEach(heading => {
+            bounds.extend(
+                google.maps.geometry.spherical.computeOffset(
+                    origin,
+                    radius * 1.4,
+                    heading,
+                ),
+            );
+        });
+        this.map.fitBounds(bounds, 40);
     }
 
     /** 刪除圓圈 */
@@ -583,8 +718,11 @@ export class MapComponent implements OnInit, OnDestroy {
                             });
                         }
                     });
-                    if (resAll[0]?.boundingbox)
-                        this.setBoundary(resAll[0].boundingbox);
+                    this.setBoundary(
+                        resAll
+                            .map(res => res?.boundingbox)
+                            .filter((box): box is number[] => !!box),
+                    );
                 }),
                 finalize(() => (this.loading = false)),
             )

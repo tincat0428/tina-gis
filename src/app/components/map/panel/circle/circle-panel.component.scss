@@ -1,0 +1,90 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+:host([hidden]) {
+    display: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  新增區                                                                     */
+/* -------------------------------------------------------------------------- */
+.radius-chip {
+    padding: 0.2rem 0.5rem;
+    background: #fff;
+    border: solid 1px #cbd5e1;
+    border-radius: 999px;
+    color: #475569;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+        border-color: #94a3b8;
+    }
+
+    &.active {
+        background: #0b92b3;
+        border-color: #0b92b3;
+        color: #fff;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  已選範圍卡片                                                                */
+/* -------------------------------------------------------------------------- */
+.circle-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0 0.75rem 0.75rem;
+}
+
+.circle-card {
+    padding: 0.625rem;
+    margin-bottom: 0.5rem;
+    background: #fff;
+    border: solid 1px #e2e8f0;
+    border-radius: 8px;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
+
+    &:hover {
+        border-color: #f87171;
+        box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.35);
+    }
+}
+
+.circle-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    background: #ef4444;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.empty-hint {
+    padding: 2rem 1rem;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    text-align: center;
+    line-height: 1.6;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  查詢結果                                                                    */
+/* -------------------------------------------------------------------------- */
+.result-list {
+    overflow-y: auto;
+    flex: 1;
+}

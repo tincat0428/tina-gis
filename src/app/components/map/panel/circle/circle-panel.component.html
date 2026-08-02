@@ -1,23 +1,85 @@
 <p-toast></p-toast>
 
-<form class="p-3" [formGroup]="searchForm" [hidden]="showResult">
-    <ng-container formArrayName="IncidentLocations">
-        <div *ngFor="let location of incidentLocation.controls; let i = index"
-            [formGroupName]="i" class="w-full flex px-2 mb-2">
-            <p-inputgroup>
-                <p-inputgroup-addon [hidden]="hiddenRadiusIdx === i">半徑</p-inputgroup-addon>
-                <p-inputnumber [min]="50" [hidden]="hiddenRadiusIdx === i" formControlName="Radius" />
-                <p-inputgroup-addon><i class="pi pi-map-marker"></i></p-inputgroup-addon>
-                <input type="text" pInputText placeholder="請輸入地址" formControlName="Address"
-                    (keydown.enter)="addCircleFromAddr(i)" />
-                <p-button *ngIf="!location.get('Longitude')?.value" icon="pi pi-search" severity="info"
-                    (onClick)="addCircleFromAddr(i)" />
-                <p-button *ngIf="location.get('Longitude')?.value" icon="pi pi-eraser" severity="danger"
-                    (onClick)="clearCircleData(i)" />
-            </p-inputgroup>
+<div class="flex flex-col flex-grow overflow-hidden" [hidden]="showResult">
+    <!-- 新增範圍 -->
+    <div class="p-3 border-b bg-gray-50">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="text-sm text-gray-600 whitespace-nowrap">預設半徑</span>
+            <p-inputnumber styleClass="!flex-none !w-[92px]" inputStyleClass="!w-full" suffix=" km"
+                [min]="minRadiusKm" [max]="maxRadiusKm" [step]="0.5" [minFractionDigits]="1" [maxFractionDigits]="1"
+                [ngModel]="nextRadiusKm" (ngModelChange)="setNextRadius($event)" />
+            <div class="flex gap-1 flex-wrap">
+                <button *ngFor="let preset of radiusPresets" type="button" class="radius-chip"
+                    [class.active]="nextRadiusKm === preset" (click)="setNextRadius(preset)">
+                    {{ presetLabel(preset) }}
+                </button>
+            </div>
         </div>
-    </ng-container>
-</form>
+
+        <p-inputgroup>
+            <p-inputgroup-addon><i class="pi pi-map-marker"></i></p-inputgroup-addon>
+            <input type="text" pInputText placeholder="輸入地址搜尋" [(ngModel)]="searchAddress" [disabled]="isFull"
+                (keydown.enter)="addFromAddress()" />
+            <p-button [icon]="addLoading ? 'pi pi-spin pi-spinner' : 'pi pi-search'" severity="info"
+                [disabled]="addLoading || isFull" (onClick)="addFromAddress()" />
+        </p-inputgroup>
+
+        <p class="m-0 mt-2 text-xs text-gray-500">
+            <i class="pi pi-info-circle mr-1 text-xs"></i>
+            <ng-container *ngIf="!isFull">或直接在地圖上點擊圓心後拖曳決定範圍</ng-container>
+            <ng-container *ngIf="isFull">已達 {{ maxCount }} 個範圍上限，請先移除不需要的項目</ng-container>
+        </p>
+    </div>
+
+    <!-- 已選範圍 -->
+    <div class="flex items-center justify-between px-3 py-2">
+        <span class="text-sm font-medium text-gray-700">已選範圍（{{ filledCount }}/{{ maxCount }}）</span>
+        <p-button label="清空" icon="pi pi-trash" severity="secondary" size="small" [text]="true"
+            [disabled]="!filledCount" (onClick)="clearAll()" />
+    </div>
+
+    <div class="circle-list" [formGroup]="searchForm">
+        <ng-container formArrayName="IncidentLocations">
+            <ng-container *ngFor="let location of incidentLocation.controls; let i = index">
+                <div *ngIf="location.get('Longitude')?.value != null" [formGroupName]="i" class="circle-card"
+                    (mouseenter)="highlightCircle(i)" (mouseleave)="highlightCircle(null)">
+                    <div class="flex items-start gap-2">
+                        <span class="circle-badge mt-[2px]">{{ i + 1 }}</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="m-0 text-sm break-words"
+                                [class.text-gray-400]="!location.get('Address')?.value">
+                                {{ location.get('Address')?.value || '地址查詢中…' }}
+                            </p>
+                            <p class="m-0 mt-1 text-xs text-gray-400">
+                                {{ location.get('Latitude')?.value | number: '1.5-5' }},
+                                {{ location.get('Longitude')?.value | number: '1.5-5' }}
+                            </p>
+                        </div>
+                        <p-button icon="pi pi-trash" severity="danger" size="small" [text]="true"
+                            (onClick)="removeCircle(i)" />
+                    </div>
+
+                    <div class="flex items-center gap-3 mt-2">
+                        <span class="text-xs text-gray-600 whitespace-nowrap">半徑</span>
+                        <p-slider class="flex-1" [ngModel]="radiusKm(location)"
+                            [ngModelOptions]="{ standalone: true }" (ngModelChange)="setRadius(i, $event)"
+                            [min]="minRadiusKm" [max]="maxRadiusKm" [step]="0.1" />
+                        <p-inputnumber styleClass="!flex-none !w-[92px]" inputStyleClass="!w-full !text-sm" suffix=" km"
+                            [min]="minRadiusKm" [max]="maxRadiusKm" [step]="0.5" [minFractionDigits]="1"
+                            [maxFractionDigits]="1" [ngModel]="radiusKm(location)"
+                            [ngModelOptions]="{ standalone: true }" (ngModelChange)="setRadius(i, $event)" />
+                    </div>
+                </div>
+            </ng-container>
+        </ng-container>
+
+        <div *ngIf="!filledCount" class="empty-hint">
+            <i class="pi pi-map-marker block mb-2 text-2xl"></i>
+            尚未建立任何範圍<br />
+            輸入地址或於地圖上點擊即可新增
+        </div>
+    </div>
+</div>
 
 <!-- 查詢結果 -->
 <div *ngIf="showResult" class="flex flex-col flex-grow">

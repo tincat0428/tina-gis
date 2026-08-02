@@ -9,7 +9,12 @@ import {
     shareReplay,
     tap,
 } from 'rxjs';
-import { DropDownListModel, MapActionType, MapEditType } from '../model/gis';
+import {
+    DropDownListModel,
+    MapActionType,
+    MapEditType,
+    RegionOption,
+} from '../model/gis';
 
 const GOOGLE = 'AIzaSyBj1eqR5T03-v52epF1leMMXeoTkwNXadw';
 
@@ -19,11 +24,9 @@ const GOOGLE = 'AIzaSyBj1eqR5T03-v52epF1leMMXeoTkwNXadw';
 export class GisService {
     constructor(private http: HttpClient) {
         this.region$ = this.http
-            .get<{
-                district: DropDownListModel[];
-                bureau: DropDownListModel[];
-            }>('/mapData/region.json')
+            .get<{ body: RegionOption[] }>('/mapData/region.json')
             .pipe(
+                map(res => res?.body ?? null),
                 catchError(() => of(null)),
                 shareReplay(1),
             );
@@ -40,6 +43,41 @@ export class GisService {
 
     //- 地圖編輯模式
     mapEditType: MapEditType = null;
+
+    //- 圈選範圍上限
+    readonly circleMaxCount = 8;
+    //- 圈選半徑上下限（面板與地圖繪製共用）
+    //- 內部一律以「公尺」計算（Google Maps 圓半徑單位），面板顯示才換算成公里
+    readonly circleMinRadius = 500;
+    readonly circleMaxRadius = 10000;
+    //- 下一筆圈選的預設半徑（面板設定，地圖點擊圈選時共用）
+    circleDefaultRadius = 1000;
+
+    /** 半徑上下限（公里，面板顯示用） */
+    get circleMinRadiusKm(): number {
+        return this.toKm(this.circleMinRadius);
+    }
+    get circleMaxRadiusKm(): number {
+        return this.toKm(this.circleMaxRadius);
+    }
+
+    /** 將半徑（公尺）夾在允許範圍內 */
+    clampRadius(radius: number): number {
+        return Math.min(
+            Math.max(Math.round(radius), this.circleMinRadius),
+            this.circleMaxRadius,
+        );
+    }
+
+    /** 公尺 → 公里（取到小數點第一位，避免浮點誤差） */
+    toKm(radius: number): number {
+        return Math.round(radius / 100) / 10;
+    }
+
+    /** 公里 → 公尺 */
+    toMeter(radiusKm: number): number {
+        return Math.round(radiusKm * 1000);
+    }
 
     //- 對 panel 執行動作
     panelAction$ = new BehaviorSubject<{ type: MapActionType; data?}>(null);
@@ -64,10 +102,7 @@ export class GisService {
     villageOptions$ = new BehaviorSubject<DropDownListModel[]>([]);
 
     //- 地域範圍匡選對應（從 /mapData/region.json 取得）
-    region$: Observable<{
-        district: DropDownListModel[];
-        bureau: DropDownListModel[];
-    } | null>;
+    region$: Observable<RegionOption[] | null>;
 
     /**
      * GoogleMap 初始化（包含 geometry library）

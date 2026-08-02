@@ -10,7 +10,7 @@ export class JsonApiService {
     constructor(private http: HttpClient) {}
 
     public fetch(url): Observable<any> {
-        return this.http.get(this.getBaseUrl() + url).pipe(
+        return this.http.get(this.getBaseUrl() + url.replace(/^\/+/, '')).pipe(
             delay(100),
             map((data: any) => data.data || data),
             catchError(this.handleError),

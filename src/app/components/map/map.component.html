@@ -3,7 +3,7 @@
 <div id="map-content" class="map-panel" [ngClass]="{ active: sidebarVisible }" *ngIf="apiLoaded">
     <!-- 查詢 sidebar 展開按鈕 -->
     <button class="panel__toggle" (click)="sidebarToggle()">
-        <i class="pi" [ngClass]="sidebarVisible ? 'pi-angle-left' : 'pi-angle-right'"></i>
+        <i class="fa-solid" [ngClass]="sidebarVisible ?  'fa-xmark': 'fa-pen'"></i>
     </button>
 
     <!-- 查詢 sidebar -->
@@ -72,8 +72,8 @@
 
             <!-- 地圖圈選 -->
             <ng-container *ngFor="let circle of circles; let i = index">
-                <map-circle *ngIf="circle" [center]="circle.center" [radius]="circle.radius"
-                    [options]="circle.options" />
+                <map-circle #circleRef="mapCircle" *ngIf="circle" [center]="circle.center" [radius]="circle.radius"
+                    [options]="circle.options" (radiusChanged)="onCircleRadiusChanged(i, circleRef)" />
                 <map-marker *ngIf="circle" [position]="{
                         lat: circle.center.lat,
                         lng: circle.center.lng,
@@ -119,6 +119,21 @@
                     className: 'icon-marker-label',
                 }"></map-marker>
         </google-map>
+
+        <!-- 圈選操作提示 -->
+        <div class="draw-hint" *ngIf="gisService.mapEditType === 'circle'">
+            <ng-container *ngIf="!isDrawing">
+                <i class="pi pi-info-circle"></i>
+                點擊地圖設定圓心，再拖曳決定範圍（最大 {{ gisService.circleMaxRadiusKm }} km）
+            </ng-container>
+            <ng-container *ngIf="isDrawing">
+                <i class="pi pi-arrows-h"></i>
+                半徑 {{ tempCircle.radius / 1000 | number: '1.1-1' }} km
+                <span *ngIf="radiusCapped" class="draw-hint__cap">已達上限</span>
+                ，再點一次完成
+                <span class="draw-hint__key">Esc</span> 取消
+            </ng-container>
+        </div>
     </div>
 
     <!-- 攝影機類別選單 -->
@@ -139,43 +154,6 @@
                 <img src="assets/img/map/marker/selector/case.png" alt="機箱" />
             </label>
         </div> -->
-    </div>
-
-    <!-- 客製化功能列 -->
-    <div class="map-controller">
-        <!-- 地圖圖層選單 -->
-        <div *ngIf="gisService.region$ | async as Region">
-            <button class="map-btn shadow" (click)="overlayPanel.toggle($event)">
-                地圖圖層
-                <i class="pi pi-chevron-down ml-2"></i>
-            </button>
-            <p-popover #overlayPanel appendTo="body" [style]="{ width: '450px' }">
-                <p-accordion [value]="regionActiveSec">
-                    <p-accordionpanel *ngFor="
-                            let sec of regionSelector;
-                            let secIndex = index
-                        " [value]="secIndex">
-                        <p-accordionheader>
-                            {{ sec.header }}
-                        </p-accordionheader>
-                        <p-accordioncontent>
-                            <div class="flex flex-wrap">
-                                <div *ngFor="let item of Region[sec.dataKey]" class="w-1/4 flex mb-2 px-1">
-                                    <!-- <p-radiobutton name="area" [value]="item.value" [inputId]="item.value"
-                                        [label]="item.label" [(ngModel)]="selectedArea" (ngModelChange)="
-                                            regionActiveSec = secIndex
-                                        " /> -->
-                                </div>
-                            </div>
-                        </p-accordioncontent>
-                    </p-accordionpanel>
-                </p-accordion>
-                <div class="px-3 pb-2">
-                    <p-button styleClass="w-100" label="更新" [disabled]="!selectedArea?.length"
-                        (onClick)="drawRegionArea(selectedArea)"></p-button>
-                </div>
-            </p-popover>
-        </div>
     </div>
 </div>
 

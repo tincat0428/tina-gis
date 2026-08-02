@@ -1,6 +1,8 @@
 <p-tabs [(value)]="gisService.mapEditType" (valueChange)="tabChange()">
     <p-tablist>
-        <p-tab *ngFor="let tab of modeList" [value]="tab.value">{{tab.label}}</p-tab>
+        <p-tab *ngFor="let tab of modeList" [value]="tab.value">
+            <i  [ngClass]="tab.icon"></i>{{tab.label}}
+        </p-tab>
     </p-tablist>
 </p-tabs>
 
@@ -8,3 +10,4 @@
     (focusMarkerEmitter)="focusMarkerEmitter.emit($event)">
 </app-circle-panel>
 <app-route-panel [hidden]="gisService.mapEditType !== 'route'"></app-route-panel>
+<app-region-panel  [hidden]="gisService.mapEditType !== 'region'"></app-region-panel>

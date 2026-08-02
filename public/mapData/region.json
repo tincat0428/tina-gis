@@ -1,33 +1,19 @@
 {
-	"body": {
-		"district": [
-			{ "label": "八德區", "value": ["BD"] },
-			{ "label": "大園區", "value": ["DY"] },
-			{ "label": "大溪區", "value": ["DX"] },
-			{ "label": "中壢區", "value": ["ZL"] },
-			{ "label": "平鎮區", "value": ["PZ"] },
-			{ "label": "桃園區", "value": ["TY"] },
-			{ "label": "復興區", "value": ["FX"] },
-			{ "label": "新屋區", "value": ["XW"] },
-			{ "label": "楊梅區", "value": ["YM"] },
-			{ "label": "龍潭區", "value": ["LT"] },
-			{ "label": "龜山區", "value": ["GS"] },
-			{ "label": "蘆竹區", "value": ["LZ"] },
-			{ "label": "觀音區", "value": ["GY"] }
-		],
-		"bureau": [
-			{ "label": "桃園分局", "value": ["TY"] },
-			{ "label": "中壢分局", "value": ["ZL"] },
-			{ "label": "楊梅分局", "value": ["YM", "XW"] },
-			{ "label": "大園分局", "value": ["DY", "GY"] },
-			{ "label": "大溪分局", "value": ["DX", "FX"] },
-			{ "label": "平鎮分局", "value": ["PZ"] },
-			{ "label": "龜山分局", "value": ["GS"] },
-			{ "label": "八德分局", "value": ["BD"] },
-			{ "label": "龍潭分局", "value": ["LT"] },
-			{ "label": "蘆竹分局", "value": ["LZ"] }
-		]
-	},
+	"body": [
+		{ "label": "八德區", "value": ["BD"] },
+		{ "label": "大園區", "value": ["DY"] },
+		{ "label": "大溪區", "value": ["DX"] },
+		{ "label": "中壢區", "value": ["ZL"] },
+		{ "label": "平鎮區", "value": ["PZ"] },
+		{ "label": "桃園區", "value": ["TY"] },
+		{ "label": "復興區", "value": ["FX"] },
+		{ "label": "新屋區", "value": ["XW"] },
+		{ "label": "楊梅區", "value": ["YM"] },
+		{ "label": "龍潭區", "value": ["LT"] },
+		{ "label": "龜山區", "value": ["GS"] },
+		{ "label": "蘆竹區", "value": ["LZ"] },
+		{ "label": "觀音區", "value": ["GY"] }
+	],
 	"message": "Success",
 	"code": "000",
 	"isSuccess": true,

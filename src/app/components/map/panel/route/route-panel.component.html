@@ -11,7 +11,7 @@
                 <div class="flex-1">
                     <p-inputgroup>
                         <p-inputgroup-addon><i class="pi pi-map-marker"></i></p-inputgroup-addon>
-                        <input type="text" pInputText placeholder="請輸入地址" formControlName="Address"
+                        <input type="text" pInputText placeholder="請輸入地址或點擊地圖" formControlName="Address"
                             (keydown.enter)="addWaypointFromAddr(i)" />
                         <p-button *ngIf="!waypoint.get('Longitude')?.value" icon="pi pi-search" severity="info"
                             (onClick)="addWaypointFromAddr(i)" />

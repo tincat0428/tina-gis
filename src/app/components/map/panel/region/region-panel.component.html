@@ -1,0 +1,9 @@
+<div *ngIf="gisService.region$ | async as Region">
+    <div class="flex flex-wrap px-3">
+        <div *ngFor="let item of Region" class="w-1/3 flex items-center py-2">
+            <p-checkbox name="area" [value]="item.value" [inputId]="'district-' + item.label"
+                [(ngModel)]="selectedArea" (onChange)="drawRegionArea()" />
+            <label [for]="'district-' + item.label" class="ml-2">{{ item.label }}</label>
+        </div>
+    </div>
+</div>

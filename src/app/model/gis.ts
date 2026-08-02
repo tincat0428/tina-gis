@@ -1,5 +1,5 @@
 /* 地圖模式 */
-export type MapEditType = 'circle' | 'route'
+export type MapEditType = 'circle' | 'route' | 'region'
 
 /**
  * 地圖編輯行動
@@ -7,7 +7,10 @@ export type MapEditType = 'circle' | 'route'
 export type MapActionType =
     | 'add-circle'
     | 'update-circle'
+    | 'update-circle-radius'
     | 'delete-circle'
+    | 'clear-circles'
+    | 'highlight-circle'
     | 'add-waypoint'
     | 'update-waypoint'
     | 'delete-waypoint'
@@ -16,6 +19,7 @@ export type MapActionType =
     | 'clear'
     | 'show-halo'
     | 'remove-halo'
+    | 'draw-region'
     | null;
 
 export interface CctvMarker {
@@ -64,9 +68,16 @@ export interface DropDownListModel {
     value: string;
 }
 
+/** 地域範圍選項（value 為對應的地圖資料檔代碼，可對應多個） */
+export interface RegionOption {
+    label: string;
+    value: string[];
+}
+
 
 export interface GisCircleType {
     index: number;
     center: google.maps.LatLngLiteral;
     radius: number
+    address?: string;
 }
